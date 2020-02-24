@@ -2,13 +2,13 @@
 apiVersion: operators.coreos.com/v1alpha1
 kind: ClusterServiceVersion
 metadata:
-  name: cam-operator.v1.0.0
+  name: cam-operator.v1.0.1
   namespace: openshift-migration
   annotations:
     capabilities: Seamless Upgrades
     description: Facilitates migration of workloads from OpenShift 3.x to OpenShift 4.x
     categories: 'OpenShift Optional'
-    containerImage: registry.redhat.io/rhcam-1-0/openshift-migration-rhel7-operator:v1.0
+    containerImage: registry.redhat.io/rhcam-1-0/openshift-migration-rhel7-operator@sha256:c27f7293d019a8c033b3944f31e4812ca3eee53bd129561656ba79f557e0b7a8
     createdAt: 2019-07-25T10:21:00Z
     repository: https://github.com/fusor/mig-operator
     alm-examples: |-
@@ -21,6 +21,7 @@ metadata:
               "namespace": "openshift-migration"
             },
             "spec": {
+              "azure_resource_group": "",
               "cluster_name": "host",
               "migration_velero": true,
               "migration_controller": true,
@@ -171,6 +172,18 @@ metadata:
     certified: "false"
     support: Red Hat
 spec:
+  relatedImages:
+  - name: controller
+    image: registry.redhat.io/rhcam-1-0/openshift-migration-controller-rhel8@sha256:f5cdf3c0d3da45243b3e98441f0486b29aa8683b09dd936dfb32fda3ff10c2c1
+  - name: ui
+    image: registry.redhat.io/rhcam-1-0/openshift-migration-ui-rhel8@sha256:a196fa9d9af4262641a740823a8b3343c59a352fb3a48a409538554bd1fa88a9
+  - name: velero
+    image: registry.redhat.io/rhcam-1-0/openshift-migration-velero-rhel8@sha256:d4423442db8618e4c96faadd96b053572ecf278f07461c8f8709af8094e8a5da
+  - name: velero_restic_restore_helper
+    image: registry.redhat.io/rhcam-1-0/openshift-migration-velero-restic-restore-helper-rhel8@sha256:0ec6d5e6f3446490d7cb54a2443c2869936fc7650e19740e4b10aed71ff4f863
+  - name: migration_plugin
+    image: registry.redhat.io/rhcam-1-0/openshift-migration-plugin-rhel8@sha256:ffdea2b8e467ab7a8e1b9f718e7e3700abbfa3cb9539a09b4dc7a5cb6ea9e0bb
+  replaces: cam-operator.v1.0.0
   displayName: Cluster Application Migration Operator
   description: |
     The Cluster Application Migration Operator for OpenShift enables installation of the OpenShift application migration tool.
@@ -185,14 +198,14 @@ spec:
 
   links:
   - name: Migrations
-    url: https://github.com/fusor/openshift-migration-controller-rhel8
+    url: https://github.com/fusor/openshift-migration-controller-rhel8@sha256
   - name: Documentation
     url: https://github.com/fusor/mig-operator
   - name: Migration Operator
     url: https://github.com/fusor/mig-operator
 
   labels:
-    alm-status-descriptors: cam-operator.v1.0.0
+    alm-status-descriptors: cam-operator.v1.0.1
     alm-owner-prometheus: cam-operator
 
   selector:
@@ -225,6 +238,18 @@ spec:
           - routes
           verbs:
           - '*'
+        - apiGroups:
+          - noobaa.io
+          resources:
+          - noobaas
+          verbs:
+          - "*"
+        - apiGroups:
+          - apiextensions.k8s.io
+          resources:
+          - customresourcedefinitions
+          verbs:
+          - "*"
         - apiGroups:
           - ""
           resources:
@@ -281,8 +306,22 @@ spec:
           resources:
           - configmaps
           - namespaces
+          - secrets
+          - services
           verbs:
           - '*'
+        - apiGroups:
+          - noobaa.io
+          resources:
+          - noobaas
+          verbs:
+          - "*"
+        - apiGroups:
+          - apiextensions.k8s.io
+          resources:
+          - customresourcedefinitions
+          verbs:
+          - "*"
         - apiGroups:
           - oauth.openshift.io
           resources:
@@ -483,26 +522,6 @@ spec:
         - apiGroups:
           - migration.openshift.io
           resources:
-          - migstages
-          verbs:
-          - get
-          - list
-          - watch
-          - create
-          - update
-          - patch
-          - delete
-        - apiGroups:
-          - migration.openshift.io
-          resources:
-          - migstages/status
-          verbs:
-          - get
-          - update
-          - patch
-        - apiGroups:
-          - migration.openshift.io
-          resources:
           - migstorages
           verbs:
           - get
@@ -648,7 +667,7 @@ spec:
               serviceAccount: migration-operator
               containers:
               - name: ansible
-                image: registry.redhat.io/rhcam-1-0/openshift-migration-rhel7-operator:v1.0
+                image: registry.redhat.io/rhcam-1-0/openshift-migration-rhel7-operator@sha256:c27f7293d019a8c033b3944f31e4812ca3eee53bd129561656ba79f557e0b7a8
                 command:
                 - /usr/local/bin/ao-logs
                 - /tmp/ansible-operator/runner
@@ -659,7 +678,7 @@ spec:
                   name: runner
                   readOnly: true
               - name: operator
-                image: registry.redhat.io/rhcam-1-0/openshift-migration-rhel7-operator:v1.0
+                image: registry.redhat.io/rhcam-1-0/openshift-migration-rhel7-operator@sha256:c27f7293d019a8c033b3944f31e4812ca3eee53bd129561656ba79f557e0b7a8
                 imagePullPolicy: Always
                 volumeMounts:
                 - mountPath: /tmp/ansible-operator/runner
@@ -680,24 +699,30 @@ spec:
                 - name: PROJECT
                   value: rhcam-1-0
                 - name: MIG_CONTROLLER_REPO
-                  value: openshift-migration-controller-rhel8
+                  value: openshift-migration-controller-rhel8@sha256
+                - name: MIG_CONTROLLER_TAG
+                  value: f5cdf3c0d3da45243b3e98441f0486b29aa8683b09dd936dfb32fda3ff10c2c1
                 - name: MIG_UI_REPO
-                  value: openshift-migration-ui-rhel8
+                  value: openshift-migration-ui-rhel8@sha256
+                - name: MIG_UI_TAG
+                  value: a196fa9d9af4262641a740823a8b3343c59a352fb3a48a409538554bd1fa88a9
                 - name: VELERO_REPO
-                  value: openshift-migration-velero-rhel8
-                - name: VELERO_PLUGIN_REPO
-                  value: openshift-migration-plugin-rhel8
-                - name: VELERO_RESTIC_RESTORE_HELPER_REPO
-                  value: openshift-migration-velero-restic-restore-helper-rhel8
-                - name: MIGRATION_TAG
-                  value: v1.0
+                  value: openshift-migration-velero-rhel8@sha256
                 - name: VELERO_TAG
-                  value: v1.0
+                  value: d4423442db8618e4c96faadd96b053572ecf278f07461c8f8709af8094e8a5da
+                - name: VELERO_PLUGIN_REPO
+                  value: openshift-migration-plugin-rhel8@sha256
+                - name: VELERO_PLUGIN_TAG
+                  value: ffdea2b8e467ab7a8e1b9f718e7e3700abbfa3cb9539a09b4dc7a5cb6ea9e0bb
+                - name: VELERO_RESTIC_RESTORE_HELPER_REPO
+                  value: openshift-migration-velero-restic-restore-helper-rhel8@sha256
+                - name: VELERO_RESTIC_RESTORE_HELPER_TAG
+                  value: 0ec6d5e6f3446490d7cb54a2443c2869936fc7650e19740e4b10aed71ff4f863
               volumes:
               - name: runner
                 emptyDir: {}
   maturity: stable
-  version: 1.0.0
+  version: 1.0.1
   customresourcedefinitions:
     owned:
     - name: backupstoragelocations.velero.io
