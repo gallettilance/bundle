@@ -1,0 +1,7 @@
+packageName: cam-operator
+channels:
+- name: release-v1.1
+  currentCSV: cam-operator.v1.1.1
+- name: release-v1
+  currentCSV: cam-operator.v1.0.1
+defaultChannel: release-v1.1
